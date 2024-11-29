@@ -1,0 +1,23 @@
+{
+  "name": "dd-discord-bot-oauth-helper",
+  "version": "1.0.0",
+  "description": "A Discord bot with an Express.js server to handle OAuth2 authorization, allowing users to authenticate and grant permissions to join servers. This project is designed for ease of setup and deployment.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.0.3",
+    "express": "^4.21.1",
+    "express-rate-limit": "^7.4.1",
+    "helmet": "^8.0.0",
+    "pg": "^8.13.1",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.5",
+    "sequelize-auto": "^0.8.8"
+  }
+}
