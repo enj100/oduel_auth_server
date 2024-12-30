@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../database/database');
 
-const Auth = sequelize.define("discord_auth", {
+const Auth = sequelize.define("auth", {
   id: {
     type: DataTypes.BIGINT,
     allowNull: true,
@@ -15,6 +15,7 @@ const Auth = sequelize.define("discord_auth", {
   email: {
     type: DataTypes.STRING,
     allowNull: true,
+    defaultValue: null
   },
   access_token: {
     type: DataTypes.STRING,

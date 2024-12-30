@@ -4,6 +4,7 @@ const sequelize = require("./database/database");
 const Auth = require("./models/auth");
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const Settings = require("./models/settings");
 require("dotenv").config();
 
 const app = express();
@@ -26,6 +27,8 @@ const connectDB = async (retries = 5) => {
     try {
       await sequelize.authenticate();
       await Auth.sync({ alter: true });
+      await Settings.sync({ alter: true });
+
       console.log('Connection to the database has been established successfully.');
       return;
     } catch (error) {
@@ -59,7 +62,7 @@ app.get("/auth", (req, res) => {
 
   const authURL = `https://discord.com/api/oauth2/authorize?client_id=${clientID}&redirect_uri=${encodeURIComponent(
     redirectURI
-  )}&response_type=code&scope=email+guilds.join+identify`;
+  )}&response_type=code&scope=guilds.join+identify`;
   res.redirect(authURL);
 });
 
@@ -115,6 +118,7 @@ app.get("/callback", async (req, res) => {
       });
     }
 
+
     // Save user to the database
     try {
       await Auth.findOrCreate({
@@ -130,15 +134,56 @@ app.get("/callback", async (req, res) => {
       return res.status(500).send("Failed to save user data.");
     }
 
-    if (process.env.GUILD_ID) {
-      const discordServerURL = `https://discord.com/channels/${process.env.GUILD_ID}`;
-      res.redirect(discordServerURL);
-    } else {
-      res.send("Authorization successful! You can now use the /link command.");
+    // Step 1: Create a DM channel
+    const dmChannelResponse = await fetch('https://discord.com/api/v10/users/@me/channels', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bot ${process.env.BOT_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ recipient_id: userData.id }),
+    });
+    if (!dmChannelResponse.ok) {
+      console.error("Failed to fetch DM channel:", dmChannelResponse);
+    }
+    const dmChannelData = await dmChannelResponse.json();
+    const channelId = dmChannelData.id;
+    // Step 2: Send the message to the DM channel
+    const messageResponse = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bot ${process.env.BOT_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ content: `✅ *You have successfully authorized the bot! Thank you!*` }),
+    });
+    if (!messageResponse.ok) {
+      console.error("Failed to send DM:", messageResponse);
+    }
+
+    // Apply the role
+    const [settings] = await Settings.findOrCreate({ where: { id: 0 } });
+
+    const url = `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${userData.id}/roles/${settings.auth_role}`;
+    const roleResponse = await fetch(`${url}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bot ${process.env.BOT_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!roleResponse.ok) {
+      console.log(`A problem occured adding a role for ${userData.id}`);
     }
   } catch (err) {
     console.error("Error during authorization:", err);
     res.status(500).send("Internal server error during authorization.");
+  }
+  if (process.env.GUILD_ID) {
+    const discordServerURL = `https://discord.com/channels/${process.env.GUILD_ID}`;
+    res.redirect(discordServerURL);
+  } else {
+    res.send("Authorization successful!");
   }
 });
 
@@ -152,6 +197,3 @@ app.use((err, req, res, next) => {
 const server = app.listen(port, () => {
   console.log(`Server running on ${BASE_URL}`);
 });
-
-// Login the Discord bot
-// client.login(process.env.BOT_TOKEN);
