@@ -125,7 +125,7 @@ app.get("/callback", async (req, res) => {
         where: { discord_id: userData.id },
         defaults: {
           discord_id: userData.id,
-          email: userData.email,
+          email: null,
           access_token: data.access_token,
         },
       });
